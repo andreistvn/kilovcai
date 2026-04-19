@@ -2,14 +2,14 @@
   "exhibits": [
     {
       "id": "IMG_PI?_001",
-      "title": "[ SHIZUKA_AFTERIMAGE_01 ]",
-      "description": "Somewhere in the room, a small hesitation keeps returning, soft enough to miss and persistent enough to stay.",
+      "title": "[ AFTERIMAGE_01 ]",
+      "description": "it's probably just a dead pixel on a screen i haven't looked at in years. it doesn't mean anything. i tried to delete the folder but the button wouldn't respond, so it just sits there. rotting in the cache. staring doesn't make it real; it's just noise that got organized by accident. a complete waste of electricity. i don't even remember why i saved this. it's just occupying space until the battery dies. don't expect it to move. it already forgot how.",
       "type": "image",
       "content": "./assets/images/takopi.webp",
       "pos": { "x": 40, "y": 42 },
       "searchTags": ["1bit", "atkinson", "anime webcore", "lain", "portrait", "japanese typography"],
       "metadata": {
-        "date": "1998-07-06",
+        "date": "2016-07-06",
         "source": "wired tape rip",
         "dimensions": "480x720",
         "bitDepth": "1-bit",
@@ -31,14 +31,14 @@
     },
     {
       "id": "IMG_TIMELESS_A",
-      "title": "[ TIMELINE_GRAVITY_A ]",
-      "description": "A slow, unnameable ache drifts through it, like a thought that never quite learns how to leave the door.",
+      "title": "[ accept_let_go ]",
+      "description": "i'm tired of the streetlights. they just keep flickering like nothing happened. it's infuriating how the world just expects you to move on while the impact is still echoing in my teeth. they tell you to let go like it's as easy as dropping a glass, but they don't tell you about the mess it leaves on the floor. i'd rather keep crashing into the same wall forever than face the silence of the other side. letting go isn't a choice; it's just a slow-motion wreck that never actually finishes. i hope nobody is watching the loop. i hope nobody is waiting for me to walk away.",
       "type": "image",
       "content": "./assets/images/footbridge.png",
       "pos": { "x": 610, "y": 120 },
       "searchTags": ["1bit", "floyd-steinberg", "tamagotchi", "pixel art", "square", "webcore"],
       "metadata": {
-        "date": "1999-11-01",
+        "date": "unknown",
         "source": "pocket pet archive",
         "dimensions": "640x640",
         "bitDepth": "1-bit",
@@ -47,10 +47,10 @@
     },
     {
       "id": "AUD_TAPE_47",
-      "title": "[ TAPE_NODE_47 ]",
-      "description": "Monotone room tone and piano hiss captured from a rewound cassette.",
+      "title": "[ YUUGATA_NO_PIANO_V.2015 ]",
+      "description": "A loop that does not require an audience. The piano repeats because it was programmed to, not because it was heard. Recorded during the hour when the light fails. If the file corrupts, the melody remains in the static. Do not seek the origin; the origin has already disconnected.",
       "type": "audio",
-      "content": "https://file.garden/aeULTbX7giXAZiDq/%E5%A4%95%E6%96%B9%E3%81%AE%E3%83%92%E3%82%9A%E3%82%A2%E3%83%8E%20-%202015remaster_spotdown.org.mp3",
+      "content": "https://cdn.jsdelivr.net/gh/andreistvn/kilovcai@main/assets/mp3/%E5%A4%95%E6%96%B9%E3%81%AE%E3%83%94%E3%82%A2%E3%83%8E%20-%202015remaster.mp3",
       "pos": { "x": 60, "y": 430 },
       "metadata": {
         "date": "unknown",

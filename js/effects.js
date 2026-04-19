@@ -1,130 +1,139 @@
 /**
  * effects.js
- * Post-processing effects: CRT filters, film grain, glitches
+ * Subliminal glitch events for the Yuugata no Piano audio artifact.
  */
 
 class EffectsEngine {
-  constructor() {
-    this.initialized = false;
-  }
-
-  init() {
-    this.applyGrain();
-    this.applyCRT();
-    this.bindTitleGlitch();
-    this.initialized = true;
-  }
-
-  // Apply subtle film grain texture
-  applyGrain() {
-    const canvas = document.createElement('canvas');
-    canvas.width = 64;
-    canvas.height = 64;
-    const ctx = canvas.getContext('2d');
-
-    for (let i = 0; i < 1000; i++) {
-      const x = Math.random() * 64;
-      const y = Math.random() * 64;
-      const opacity = Math.random() * 0.5;
-      ctx.fillStyle = `rgba(0, 0, 0, ${opacity})`;
-      ctx.fillRect(x, y, 1, 1);
+    constructor() {
+        this.initialized = false;
+        this.glitchLayer = null;
+        this.boundAudio = new WeakSet();
+        this.triggeredIndices = new Set();
+        this.lastTime = 0;
+        this.globalDelaySeconds = 0.5;
+        this.timestamps = [
+            35, 38.5, 42, 45.5, 63, 66.5, 70, 76.5,
+            91, 92.5, 94, 98, 133.5, 137, 140.5,
+            144, 145.5, 169, 170, 171
+        ];
     }
 
-    const grainUrl = canvas.toDataURL();
-    document.body.style.backgroundImage = `url('${grainUrl}')`;
-  }
-
-  // Apply CRT screen effect (scanlines)
-  applyCRT() {
-    const style = document.createElement('style');
-    style.textContent = `
-      body::before {
-        content: '';
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        pointer-events: none;
-        background: repeating-linear-gradient(
-          0deg,
-          rgba(0, 0, 0, 0.15),
-          rgba(0, 0, 0, 0.15) 1px,
-          transparent 1px,
-          transparent 2px
-        );
-        z-index: 9999;
-      }
-    `;
-    document.head.appendChild(style);
-  }
-
-  bindTitleGlitch() {
-    document.addEventListener('mouseover', (event) => {
-      const header = event.target.closest('.exhibit-header');
-      if (!header) return;
-
-      const nextTarget = event.relatedTarget;
-      if (nextTarget && header.contains(nextTarget)) return;
-
-      header.classList.add('glitch');
-    });
-
-    document.addEventListener('mouseout', (event) => {
-      const header = event.target.closest('.exhibit-header');
-      if (!header) return;
-
-      const nextTarget = event.relatedTarget;
-      if (nextTarget && header.contains(nextTarget)) return;
-
-      header.classList.remove('glitch');
-    });
-  }
-
-  startBackgroundHum() {
-    if (this.humStarted) return;
-    this.humStarted = true;
-
-    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-    if (!AudioContextClass) {
-      return;
+    init() {
+        this.bindSubliminalGlitch();
+        this.initialized = true;
     }
 
-    const audioContext = new AudioContextClass();
-    const bufferSize = audioContext.sampleRate * 2;
-    const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
-    const channelData = buffer.getChannelData(0);
+    ensureGlitchLayer() {
+        if (this.glitchLayer) return this.glitchLayer;
 
-    for (let i = 0; i < bufferSize; i++) {
-      channelData[i] = (Math.random() * 2 - 1) * 0.18;
+        const layer = document.createElement('div');
+        layer.className = 'subliminal-glitch-layer';
+        layer.setAttribute('aria-hidden', 'true');
+        document.body.appendChild(layer);
+        this.glitchLayer = layer;
+        return layer;
     }
 
-    const source = audioContext.createBufferSource();
-    source.buffer = buffer;
-    source.loop = true;
+    isYuugataArtifact(audioEl) {
+        const exhibit = audioEl.closest('.exhibit');
+        if (exhibit?.dataset.id === 'AUD_TAPE_47') return true;
 
-    const gainNode = audioContext.createGain();
-    gainNode.gain.value = 0.015;
+        const source = audioEl.currentSrc || audioEl.querySelector('source')?.src || '';
+        const decoded = decodeURIComponent(source).toLowerCase();
+        return decoded.includes('yuugata') || decoded.includes('夕方のピアノ');
+    }
 
-    source.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-    source.start(0);
+    bindSubliminalGlitch() {
+        const bindCandidates = () => {
+            document.querySelectorAll('.exhibit audio').forEach((audioEl) => this.bindAudio(audioEl));
+        };
 
-    this.backgroundHum = {
-      audioContext,
-      source,
-      gainNode
-    };
-  }
+        bindCandidates();
 
-  // Glitch effect (visual distortion)
-  applyGlitch(element) {
-    element.style.animation = 'glitch 0.2s';
-  }
+        const museumFloor = document.getElementById('museum-floor');
+        if (!museumFloor) return;
+
+        const observer = new MutationObserver(() => bindCandidates());
+        observer.observe(museumFloor, { childList: true, subtree: true });
+    }
+
+    bindAudio(audioEl) {
+        if (this.boundAudio.has(audioEl)) return;
+        if (!this.isYuugataArtifact(audioEl)) return;
+
+        this.boundAudio.add(audioEl);
+        this.ensureGlitchLayer();
+
+        audioEl.addEventListener('timeupdate', () => this.onAudioTimeUpdate(audioEl));
+        audioEl.addEventListener('seeking', () => this.onAudioSeek(audioEl));
+        audioEl.addEventListener('ended', () => {
+            this.triggeredIndices.clear();
+            this.lastTime = 0;
+        });
+    }
+
+    onAudioSeek(audioEl) {
+        if (audioEl.currentTime < this.lastTime) {
+            this.triggeredIndices.clear();
+        }
+        this.lastTime = audioEl.currentTime;
+    }
+
+    onAudioTimeUpdate(audioEl) {
+        const current = audioEl.currentTime;
+
+        // If playback jumps backwards, allow all timestamps to trigger again.
+        if (current + 0.5 < this.lastTime) {
+            this.triggeredIndices.clear();
+        }
+        this.lastTime = current;
+
+        this.timestamps.forEach((stamp, index) => {
+            if (this.triggeredIndices.has(index)) return;
+            const delayedStamp = stamp + this.globalDelaySeconds;
+            if (Math.abs(current - delayedStamp) > 0.3) return;
+
+            this.triggeredIndices.add(index);
+            const next = this.timestamps[index + 1] ?? Infinity;
+            const delayedNext = next + this.globalDelaySeconds;
+            const duration = (delayedNext - delayedStamp) > 3 ? 1700 : 400;
+            this.spawnWordBurst(duration);
+        });
+    }
+
+    spawnWordBurst(durationMs) {
+        const layer = this.ensureGlitchLayer();
+        const burstCount = 2 + Math.floor(Math.random() * 4);
+        const nodes = [];
+
+        for (let i = 0; i < burstCount; i++) {
+            const node = document.createElement('span');
+            node.className = 'subliminal-glitch-word';
+            node.textContent = '死ね';
+
+            const size = 48 + Math.floor(Math.random() * 150);
+            const x = Math.random() * window.innerWidth;
+            const y = Math.random() * window.innerHeight;
+            const angle = -18 + Math.random() * 36;
+            const jitterSpeed = 60 + Math.floor(Math.random() * 70);
+
+            node.style.left = `${x}px`;
+            node.style.top = `${y}px`;
+            node.style.fontSize = `${size}px`;
+            node.style.transform = `translate(-50%, -50%) rotate(${angle}deg)`;
+            node.style.animationDuration = `${jitterSpeed}ms`;
+
+            layer.appendChild(node);
+            nodes.push(node);
+        }
+
+        window.setTimeout(() => {
+            nodes.forEach((node) => node.remove());
+        }, durationMs);
+    }
 }
 
-// Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
-  const effects = new EffectsEngine();
-  effects.init();
+    const effects = new EffectsEngine();
+    effects.init();
 });
