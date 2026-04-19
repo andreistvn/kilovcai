@@ -1,0 +1,76 @@
+{
+  "exhibits": [
+    {
+      "id": "IMG_PI?_001",
+      "title": "[ SHIZUKA_AFTERIMAGE_01 ]",
+      "description": "Somewhere in the room, a small hesitation keeps returning, soft enough to miss and persistent enough to stay.",
+      "type": "image",
+      "content": "./assets/images/takopi.webp",
+      "pos": { "x": 40, "y": 42 },
+      "searchTags": ["1bit", "atkinson", "anime webcore", "lain", "portrait", "japanese typography"],
+      "metadata": {
+        "date": "1998-07-06",
+        "source": "wired tape rip",
+        "dimensions": "480x720",
+        "bitDepth": "1-bit",
+        "dither": "Atkinson"
+      }
+    },
+    {
+      "id": "TXT_CORRUPTED_V02",
+      "title": "[ BOOT_LOG_TXT ]",
+      "description": "Boot log from an orphaned terminal in monochrome mode.",
+      "type": "text",
+      "content": "> booting node-09\n> loading archive index...\n> serial link: established\n> user: lain\n> status: awake\n> _ _ _\n[END FRAME]",
+      "pos": { "x": 360, "y": 258 },
+      "metadata": {
+        "date": "2000-01-02",
+        "source": "node-09",
+        "format": "plaintext"
+      }
+    },
+    {
+      "id": "IMG_TIMELESS_A",
+      "title": "[ TIMELINE_GRAVITY_A ]",
+      "description": "A slow, unnameable ache drifts through it, like a thought that never quite learns how to leave the door.",
+      "type": "image",
+      "content": "./assets/images/footbridge.png",
+      "pos": { "x": 610, "y": 120 },
+      "searchTags": ["1bit", "floyd-steinberg", "tamagotchi", "pixel art", "square", "webcore"],
+      "metadata": {
+        "date": "1999-11-01",
+        "source": "pocket pet archive",
+        "dimensions": "640x640",
+        "bitDepth": "1-bit",
+        "dither": "Floyd-Steinberg"
+      }
+    },
+    {
+      "id": "AUD_TAPE_47",
+      "title": "[ TAPE_NODE_47 ]",
+      "description": "Monotone room tone and piano hiss captured from a rewound cassette.",
+      "type": "audio",
+      "content": "https://file.garden/aeULTbX7giXAZiDq/%E5%A4%95%E6%96%B9%E3%81%AE%E3%83%92%E3%82%9A%E3%82%A2%E3%83%8E%20-%202015remaster_spotdown.org.mp3",
+      "pos": { "x": 60, "y": 430 },
+      "metadata": {
+        "date": "unknown",
+        "source": "unmarked cassette",
+        "duration": "1:47",
+        "condition": "degraded"
+      }
+    },
+    {
+      "id": "TXT_DIARY_FRAGMENT",
+      "title": "[ FIELD_NOTE_05 ]",
+      "description": "Handwritten field note reconstructed into plain text.",
+      "type": "text",
+      "content": "No shadows today.\nOnly outlines.\nOnly static.\nOnly the hum behind the monitor.\n\nif this reaches you:\n>> do not disconnect.",
+      "pos": { "x": 430, "y": 50 },
+      "metadata": {
+        "date": "2000-10-19",
+        "source": "field notebook",
+        "pages": "05/12"
+      }
+    }
+  ]
+}
