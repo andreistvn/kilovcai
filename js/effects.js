@@ -1,6 +1,6 @@
 /**
  * effects.js
- * Subliminal glitch events for the Yuugata no Piano audio artifact.
+ * Subliminal glitch events.
  */
 
 class EffectsEngine {
@@ -8,18 +8,18 @@ class EffectsEngine {
         this.initialized = false;
         this.glitchLayer = null;
         this.boundAudio = new WeakSet();
-        this.lastTime = 0;
-        this.clockHandle = 0;
         this.clockAudio = null;
+        this.nextIndex = 0;
+        this.rafHandle = 0;
+        this.lastMediaTime = 0;
+
         this.globalDelaySeconds = 0;
-        this.maxTriggerLatenessSeconds = 0.15;
         this.timestamps = [
-            35, 38.5, 42, 45.5, 63, 66.5, 70, 76.5,
+            35, 38.5, 42, 45.5, 63, 66.5, 70, 77,
             91, 92.5, 94, 98, 133.5, 137, 140.5,
             144, 145.5, 169, 170, 171
         ];
-        this.delayedTimestamps = this.timestamps.map((stamp) => stamp + this.globalDelaySeconds);
-        this.nextIndex = 0;
+        this.delayedTimestamps = this.timestamps.map((t) => t + this.globalDelaySeconds);
     }
 
     init() {
@@ -29,7 +29,6 @@ class EffectsEngine {
 
     ensureGlitchLayer() {
         if (this.glitchLayer) return this.glitchLayer;
-
         const layer = document.createElement('div');
         layer.className = 'subliminal-glitch-layer';
         layer.setAttribute('aria-hidden', 'true');
@@ -41,93 +40,71 @@ class EffectsEngine {
     isYuugataArtifact(audioEl) {
         const exhibit = audioEl.closest('.exhibit');
         if (exhibit?.dataset.id === 'AUD_TAPE_47') return true;
-
         const source = audioEl.currentSrc || audioEl.querySelector('source')?.src || '';
-        const decoded = decodeURIComponent(source).toLowerCase();
-        return decoded.includes('yuugata') || decoded.includes('夕方のピアノ');
+        return decodeURIComponent(source).toLowerCase().includes('yuugata');
     }
 
     bindSubliminalGlitch() {
         const bindCandidates = () => {
             document.querySelectorAll('.exhibit audio').forEach((audioEl) => this.bindAudio(audioEl));
         };
-
         bindCandidates();
-
         const museumFloor = document.getElementById('museum-floor');
-        if (!museumFloor) return;
-
-        const observer = new MutationObserver(() => bindCandidates());
-        observer.observe(museumFloor, { childList: true, subtree: true });
+        if (museumFloor) {
+            new MutationObserver(() => bindCandidates()).observe(museumFloor, { childList: true, subtree: true });
+        }
     }
 
     bindAudio(audioEl) {
-        if (this.boundAudio.has(audioEl)) return;
-        if (!this.isYuugataArtifact(audioEl)) return;
-
+        if (this.boundAudio.has(audioEl) || !this.isYuugataArtifact(audioEl)) return;
         this.boundAudio.add(audioEl);
         this.ensureGlitchLayer();
 
-        audioEl.addEventListener('play', () => this.startAudioClock(audioEl));
-        audioEl.addEventListener('pause', () => this.stopAudioClock(audioEl));
-        audioEl.addEventListener('seeking', () => this.onAudioSeek(audioEl));
-        audioEl.addEventListener('seeked', () => {
-            this.lastTime = audioEl.currentTime;
-        });
+        // Re-anchor when playback actually starts or is seeked
+        audioEl.addEventListener('playing', () => this.onPlaybackStarted(audioEl));
+        audioEl.addEventListener('pause', () => this.onPlaybackPaused(audioEl));
+        audioEl.addEventListener('waiting', () => this.onPlaybackPaused(audioEl));
+        audioEl.addEventListener('seeked', () => this.onAudioSeek(audioEl));
+        
         audioEl.addEventListener('ended', () => {
             this.stopAudioClock(audioEl);
             this.nextIndex = 0;
-            this.lastTime = 0;
         });
 
         if (!audioEl.paused && !audioEl.ended) {
-            this.startAudioClock(audioEl);
+            this.onPlaybackStarted(audioEl);
         }
     }
 
-    startAudioClock(audioEl) {
+    onPlaybackStarted(audioEl) {
         if (this.clockAudio && this.clockAudio !== audioEl) {
             this.stopAudioClock(this.clockAudio);
         }
-
         this.clockAudio = audioEl;
-        this.lastTime = audioEl.currentTime;
-        this.nextIndex = this.findNextIndex(this.lastTime);
+        this.reanchorFromElement(audioEl);
+        this.startTimelineLoop(audioEl);
+    }
 
-        if (this.clockHandle) {
-            window.cancelAnimationFrame(this.clockHandle);
-            this.clockHandle = 0;
-        }
+    onPlaybackPaused(audioEl) {
+        if (this.clockAudio === audioEl) this.stopTimelineLoop();
+    }
 
-        const tick = () => {
-            if (!this.clockAudio || this.clockAudio !== audioEl || audioEl.paused || audioEl.ended) {
-                this.stopAudioClock(audioEl);
-                return;
-            }
-
-            this.onAudioTimeUpdate(audioEl);
-            this.clockHandle = window.requestAnimationFrame(tick);
-        };
-
-        this.clockHandle = window.requestAnimationFrame(tick);
+    onAudioSeek(audioEl) {
+        if (this.clockAudio !== audioEl) return;
+        this.reanchorFromElement(audioEl);
     }
 
     stopAudioClock(audioEl) {
-        if (audioEl && this.clockAudio && audioEl !== this.clockAudio) return;
-
-        if (this.clockHandle) {
-            window.cancelAnimationFrame(this.clockHandle);
-            this.clockHandle = 0;
-        }
-
-        if (!audioEl || this.clockAudio === audioEl) {
+        if (audioEl === this.clockAudio) {
+            this.stopTimelineLoop();
             this.clockAudio = null;
         }
     }
 
-    onAudioSeek(audioEl) {
-        this.nextIndex = this.findNextIndex(audioEl.currentTime);
-        this.lastTime = audioEl.currentTime;
+    reanchorFromElement(audioEl) {
+        const current = audioEl.currentTime;
+        this.lastMediaTime = current;
+        this.nextIndex = this.findNextIndex(current);
     }
 
     findNextIndex(timeSeconds) {
@@ -137,36 +114,61 @@ class EffectsEngine {
         return this.delayedTimestamps.length;
     }
 
-onAudioTimeUpdate(audioEl) {
-    if (audioEl.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return;
+    startTimelineLoop(audioEl) {
+        if (this.rafHandle) return;
 
-    const current = audioEl.currentTime;
-    
-    // Look-ahead: If we are within a very small window of the NEXT timestamp, 
-    // trigger it now rather than waiting for the next frame tick.
-    while (this.nextIndex < this.delayedTimestamps.length) {
-        const target = this.delayedTimestamps[this.nextIndex];
-        
-        // If we've passed the timestamp or are within 16ms (1 frame) of it
-        if (current >= target - 0.016) { 
-            const lateness = current - target;
+        const tick = () => {
+            if (this.clockAudio !== audioEl || audioEl.paused || audioEl.ended) {
+                this.stopTimelineLoop();
+                return;
+            }
 
-            // Only trigger if we aren't horribly out of sync
-            if (lateness <= this.maxTriggerLatenessSeconds) {
+            const current = audioEl.currentTime;
+
+            // Seek-back or timeline reset: recompute next target index.
+            if (current + 0.05 < this.lastMediaTime) {
+                this.nextIndex = this.findNextIndex(current);
+            }
+
+            if (current > this.lastMediaTime) {
+                this.processTimestampCrossings(this.lastMediaTime, current);
+                this.lastMediaTime = current;
+            }
+
+            this.rafHandle = window.requestAnimationFrame(tick);
+        };
+
+        this.rafHandle = window.requestAnimationFrame(tick);
+    }
+
+    stopTimelineLoop() {
+        if (this.rafHandle) {
+            window.cancelAnimationFrame(this.rafHandle);
+            this.rafHandle = 0;
+        }
+    }
+
+    processTimestampCrossings(previous, current) {
+        while (this.nextIndex < this.delayedTimestamps.length) {
+            const target = this.delayedTimestamps[this.nextIndex];
+            if (previous < target && current >= target) {
                 const next = this.delayedTimestamps[this.nextIndex + 1] ?? Infinity;
                 const duration = (next - target) > 3 ? 1700 : 400;
                 this.spawnWordBurst(duration);
+                this.nextIndex += 1;
+                continue;
             }
-            this.nextIndex++;
-        } else {
-            break; // Not reached yet
+            if (current >= target) {
+                this.nextIndex += 1;
+                continue;
+            }
+            break;
         }
     }
-    this.lastTime = current;
-}
 
     spawnWordBurst(durationMs) {
         const layer = this.ensureGlitchLayer();
+        document.body.classList.add('glitch-active');
         const burstCount = 2 + Math.floor(Math.random() * 4);
         const nodes = [];
 
@@ -175,29 +177,31 @@ onAudioTimeUpdate(audioEl) {
             node.className = 'subliminal-glitch-word';
             node.textContent = '死ね';
 
-            const size = 48 + Math.floor(Math.random() * 150);
+            const size = 64 + Math.floor(Math.random() * 120);
             const x = Math.random() * window.innerWidth;
             const y = Math.random() * window.innerHeight;
-            const angle = -18 + Math.random() * 36;
-            const jitterSpeed = 60 + Math.floor(Math.random() * 70);
+            const angle = -15 + Math.random() * 30;
 
             node.style.left = `${x}px`;
             node.style.top = `${y}px`;
             node.style.fontSize = `${size}px`;
             node.style.transform = `translate(-50%, -50%) rotate(${angle}deg)`;
-            node.style.animationDuration = `${jitterSpeed}ms`;
+            node.style.animationDuration = `${60 + Math.random() * 40}ms`;
 
             layer.appendChild(node);
             nodes.push(node);
         }
 
         window.setTimeout(() => {
-            nodes.forEach((node) => node.remove());
+            nodes.forEach(n => n.remove());
+            // Only remove global class if no other bursts are active (optional)
+            if (layer.children.length === 0) {
+                document.body.classList.remove('glitch-active');
+            }
         }, durationMs);
     }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    const effects = new EffectsEngine();
-    effects.init();
+    new EffectsEngine().init();
 });

@@ -421,6 +421,15 @@ main#museum-floor {
     z-index: 16050;
 }
 
+body.glitch-active > :not(.subliminal-glitch-layer) {
+    filter: invert(1) contrast(150%);
+    transition: none !important;
+}
+
+body.glitch-active .subliminal-glitch-layer {
+    filter: none !important;
+}
+
 .subliminal-glitch-word {
     position: fixed;
     display: inline-block;
