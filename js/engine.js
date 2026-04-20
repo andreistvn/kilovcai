@@ -104,7 +104,7 @@ class MuseumEngine {
             case 'audio':
                 contentHTML += `
                     <div class="exhibit-audio-container">
-                        <audio controls class="exhibit-audio">
+                        <audio controls class="exhibit-audio" preload="auto">
                             <source src="${exhibit.content}" type="audio/mpeg">
                             Your browser does not support the audio element.
                         </audio>

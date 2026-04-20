@@ -8,14 +8,18 @@ class EffectsEngine {
         this.initialized = false;
         this.glitchLayer = null;
         this.boundAudio = new WeakSet();
-        this.triggeredIndices = new Set();
         this.lastTime = 0;
-        this.globalDelaySeconds = 0.5;
+        this.clockHandle = 0;
+        this.clockAudio = null;
+        this.globalDelaySeconds = 0;
+        this.maxTriggerLatenessSeconds = 0.15;
         this.timestamps = [
             35, 38.5, 42, 45.5, 63, 66.5, 70, 76.5,
             91, 92.5, 94, 98, 133.5, 137, 140.5,
             144, 145.5, 169, 170, 171
         ];
+        this.delayedTimestamps = this.timestamps.map((stamp) => stamp + this.globalDelaySeconds);
+        this.nextIndex = 0;
     }
 
     init() {
@@ -64,42 +68,102 @@ class EffectsEngine {
         this.boundAudio.add(audioEl);
         this.ensureGlitchLayer();
 
-        audioEl.addEventListener('timeupdate', () => this.onAudioTimeUpdate(audioEl));
+        audioEl.addEventListener('play', () => this.startAudioClock(audioEl));
+        audioEl.addEventListener('pause', () => this.stopAudioClock(audioEl));
         audioEl.addEventListener('seeking', () => this.onAudioSeek(audioEl));
+        audioEl.addEventListener('seeked', () => {
+            this.lastTime = audioEl.currentTime;
+        });
         audioEl.addEventListener('ended', () => {
-            this.triggeredIndices.clear();
+            this.stopAudioClock(audioEl);
+            this.nextIndex = 0;
             this.lastTime = 0;
         });
+
+        if (!audioEl.paused && !audioEl.ended) {
+            this.startAudioClock(audioEl);
+        }
+    }
+
+    startAudioClock(audioEl) {
+        if (this.clockAudio && this.clockAudio !== audioEl) {
+            this.stopAudioClock(this.clockAudio);
+        }
+
+        this.clockAudio = audioEl;
+        this.lastTime = audioEl.currentTime;
+        this.nextIndex = this.findNextIndex(this.lastTime);
+
+        if (this.clockHandle) {
+            window.cancelAnimationFrame(this.clockHandle);
+            this.clockHandle = 0;
+        }
+
+        const tick = () => {
+            if (!this.clockAudio || this.clockAudio !== audioEl || audioEl.paused || audioEl.ended) {
+                this.stopAudioClock(audioEl);
+                return;
+            }
+
+            this.onAudioTimeUpdate(audioEl);
+            this.clockHandle = window.requestAnimationFrame(tick);
+        };
+
+        this.clockHandle = window.requestAnimationFrame(tick);
+    }
+
+    stopAudioClock(audioEl) {
+        if (audioEl && this.clockAudio && audioEl !== this.clockAudio) return;
+
+        if (this.clockHandle) {
+            window.cancelAnimationFrame(this.clockHandle);
+            this.clockHandle = 0;
+        }
+
+        if (!audioEl || this.clockAudio === audioEl) {
+            this.clockAudio = null;
+        }
     }
 
     onAudioSeek(audioEl) {
-        if (audioEl.currentTime < this.lastTime) {
-            this.triggeredIndices.clear();
-        }
+        this.nextIndex = this.findNextIndex(audioEl.currentTime);
         this.lastTime = audioEl.currentTime;
     }
 
-    onAudioTimeUpdate(audioEl) {
-        const current = audioEl.currentTime;
-
-        // If playback jumps backwards, allow all timestamps to trigger again.
-        if (current + 0.5 < this.lastTime) {
-            this.triggeredIndices.clear();
+    findNextIndex(timeSeconds) {
+        for (let i = 0; i < this.delayedTimestamps.length; i++) {
+            if (this.delayedTimestamps[i] > timeSeconds) return i;
         }
-        this.lastTime = current;
-
-        this.timestamps.forEach((stamp, index) => {
-            if (this.triggeredIndices.has(index)) return;
-            const delayedStamp = stamp + this.globalDelaySeconds;
-            if (Math.abs(current - delayedStamp) > 0.3) return;
-
-            this.triggeredIndices.add(index);
-            const next = this.timestamps[index + 1] ?? Infinity;
-            const delayedNext = next + this.globalDelaySeconds;
-            const duration = (delayedNext - delayedStamp) > 3 ? 1700 : 400;
-            this.spawnWordBurst(duration);
-        });
+        return this.delayedTimestamps.length;
     }
+
+onAudioTimeUpdate(audioEl) {
+    if (audioEl.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return;
+
+    const current = audioEl.currentTime;
+    
+    // Look-ahead: If we are within a very small window of the NEXT timestamp, 
+    // trigger it now rather than waiting for the next frame tick.
+    while (this.nextIndex < this.delayedTimestamps.length) {
+        const target = this.delayedTimestamps[this.nextIndex];
+        
+        // If we've passed the timestamp or are within 16ms (1 frame) of it
+        if (current >= target - 0.016) { 
+            const lateness = current - target;
+
+            // Only trigger if we aren't horribly out of sync
+            if (lateness <= this.maxTriggerLatenessSeconds) {
+                const next = this.delayedTimestamps[this.nextIndex + 1] ?? Infinity;
+                const duration = (next - target) > 3 ? 1700 : 400;
+                this.spawnWordBurst(duration);
+            }
+            this.nextIndex++;
+        } else {
+            break; // Not reached yet
+        }
+    }
+    this.lastTime = current;
+}
 
     spawnWordBurst(durationMs) {
         const layer = this.ensureGlitchLayer();

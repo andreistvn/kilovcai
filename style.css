@@ -116,7 +116,6 @@ html.negative-mode::after {
 #miku-banner {
     width: 100%;
     height: auto;
-    image-rendering: pixelated;
 }
 
 #desktop-icons {
@@ -475,6 +474,61 @@ main#museum-floor {
 
 body.fullscreen-active {
     overflow: hidden;
+}
+
+#compat-wall {
+    position: fixed;
+    inset: 0;
+    z-index: 20000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: #ffffff;
+    color: #000000;
+    text-align: center;
+    font-family: "Courier New", Courier, monospace;
+}
+
+#compat-wall .compat-box {
+    max-width: 720px;
+    border: 2px solid #000;
+    padding: 18px 20px;
+    background: #f7f7f7;
+    box-shadow: 4px 4px 0 #000;
+}
+
+#compat-wall h2 {
+    font-size: 18px;
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+}
+
+#compat-wall p {
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+html.compat-blocked body > * {
+    pointer-events: none !important;
+    user-select: none !important;
+}
+
+html.compat-blocked #compat-wall {
+    display: flex;
+    pointer-events: auto !important;
+    user-select: text !important;
+}
+
+html.negative-mode #compat-wall {
+    background: #0b1018;
+    color: #ffffff;
+}
+
+html.negative-mode #compat-wall .compat-box {
+    border-color: #ffffff;
+    background: #121a25;
+    box-shadow: 4px 4px 0 #ffffff;
 }
 
 @media (max-width: 860px) {
