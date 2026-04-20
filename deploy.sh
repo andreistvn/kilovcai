@@ -2,10 +2,10 @@
 
 echo "Pushing to GitHub..."
 git add .
-git commit -m "update: museum sync"
+git commit -m "add oldweb buttons"
 git push origin main
 
-echo "Pushing to Neocities (excluding .git)..."
-neocities push . --exclude .git --exclude .DS_Store
+echo "Pushing to Neocities"
+neocities push .
 
 echo "Deployment complete."
